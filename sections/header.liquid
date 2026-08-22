@@ -84,6 +84,10 @@
     content_for 'block', type: '_header-logo', id: 'header-logo'
   endcapture
 
+  capture editorial_header_blocks
+    content_for 'blocks'
+  endcapture
+
   capture menu
     content_for 'block', type: '_header-menu', id: 'header-menu'
   endcapture
@@ -464,9 +468,20 @@
   {% endif %}
 </header-component>
 
+{% if editorial_header_blocks != blank %}
+  <div class="editorial-header-experience">
+    {{ editorial_header_blocks }}
+  </div>
+{% endif %}
+
 <script
   src="{{ 'header.js' | asset_url }}"
   type="module"
+></script>
+<script
+  src="{{ 'editorial-mega-menu.js' | asset_url }}"
+  type="module"
+  fetchpriority="low"
 ></script>
 
 {% stylesheet %}
@@ -1183,6 +1198,50 @@
     font-family: var(--menu-localization-font);
     font-size: var(--menu-localization-font-size);
   }
+
+  .header-section:has(.editorial-header-experience) {
+    position: relative;
+  }
+
+  .editorial-header-experience {
+    position: absolute;
+    z-index: calc(var(--layer-header-menu) + 1);
+    inset-block-start: 0;
+    inset-inline-start: clamp(1.25rem, 3vw, 3.5rem);
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 2vw, 2.75rem);
+    min-height: var(--header-height);
+  }
+
+  .editorial-panel-block {
+    display: flex;
+  }
+
+  .editorial-panel-trigger {
+    color: var(--color-foreground);
+    font-family: var(--font-subheading--family);
+    font-size: var(--font-size--xs);
+    font-weight: var(--font-subheading--weight);
+    letter-spacing: 0.18em;
+    line-height: 1;
+    text-decoration: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  @media screen and (max-width: 749px) {
+    .editorial-header-experience {
+      inset-inline-start: 4rem;
+      gap: var(--gap-md);
+    }
+
+    .editorial-panel-trigger {
+      font-size: var(--font-size--2xs);
+      letter-spacing: 0.12em;
+    }
+  }
 {% endstylesheet %}
 
 {% unless request.design_mode %}
@@ -1199,6 +1258,14 @@
   "name": "t:names.header",
   "tag": "header",
   "class": "header-section",
+  "blocks": [
+    {
+      "type": "editorial-mega-menu"
+    },
+    {
+      "type": "editorial-menu-link"
+    }
+  ],
   "settings": [
     {
       "type": "header",

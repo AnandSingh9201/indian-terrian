@@ -1,0 +1,29 @@
+{%- doc -%}
+  A direct Header link that is independent of Horizon's native Menu block.
+{%- enddoc -%}
+
+<div class="editorial-panel-block" {{ block.shopify_attributes }}>
+  <a href="{{ block.settings.link }}" class="editorial-panel-trigger">
+    {{ block.settings.label | escape }}
+  </a>
+</div>
+
+{% schema %}
+{
+  "name": "Header menu link",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Link label",
+      "default": "Online Exclusive"
+    },
+    {
+      "type": "url",
+      "id": "link",
+      "label": "Link"
+    }
+  ]
+}
+{% endschema %}

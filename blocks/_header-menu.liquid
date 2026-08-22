@@ -21,13 +21,6 @@
     >
       {% render 'header-drawer',
         linklist: block_settings.menu,
-        editorial_mega_enabled: block_settings.editorial_mega_enabled,
-        editorial_shop_menu: block_settings.editorial_shop_menu,
-        editorial_shop_label: block_settings.editorial_shop_label,
-        editorial_shop_promo: block_settings.editorial_shop_promo,
-        editorial_about_menu: block_settings.editorial_about_menu,
-        editorial_about_label: block_settings.editorial_about_label,
-        editorial_about_promo: block_settings.editorial_about_promo,
         data_header_drawer_type: 'mobile-drawer',
         block: block,
         section: section
@@ -97,42 +90,10 @@
         assign ratio = block_settings.featured_products_aspect_ratio
       endif
 
-      assign editorial_shop_menu = block_settings.editorial_shop_menu
-      if editorial_shop_menu == blank
-        assign editorial_shop_menu = block_settings.menu
-      endif
-      assign editorial_about_menu = block_settings.editorial_about_menu
-      if block_settings.editorial_mega_enabled
-        assign overflow_minimum_items = 1
-      else
-        assign overflow_minimum_items = 2
-      endif
     %}
 
     {% capture children %}
-      {% if block_settings.editorial_mega_enabled %}
-        {% if editorial_shop_menu != blank %}
-          {% render 'editorial-mega-menu',
-            menu: editorial_shop_menu,
-            menu_key: 'shop',
-            menu_label: block_settings.editorial_shop_label,
-            promo_text: block_settings.editorial_shop_promo,
-            background_color_classes: background_color_classes,
-            block: block
-          %}
-        {% endif %}
-        {% if editorial_about_menu != blank %}
-          {% render 'editorial-mega-menu',
-            menu: editorial_about_menu,
-            menu_key: 'about',
-            menu_label: block_settings.editorial_about_label,
-            promo_text: block_settings.editorial_about_promo,
-            background_color_classes: background_color_classes,
-            block: block
-          %}
-        {% endif %}
-      {% else %}
-        {% for link in block_settings.menu.links %}
+      {% for link in block_settings.menu.links %}
         <li
           class="menu-list__list-item"
           on:blur="/deactivate"
@@ -206,26 +167,25 @@
             </div>
           {%- endif -%}
         </li>
-        {% endfor %}
-        <li
-          class="menu-list__list-item"
-          slot="more"
-          on:blur="/deactivate"
-          on:pointerenter="/activate"
-          on:pointerleave="/deactivate"
+      {% endfor %}
+      <li
+        class="menu-list__list-item"
+        slot="more"
+        on:blur="/deactivate"
+        on:pointerenter="/activate"
+        on:pointerleave="/deactivate"
+      >
+        <button
+          class="menu-list__link button-unstyled"
+          aria-haspopup="true"
+          aria-expanded="false"
+          ref="menuitem"
+          on:click="/toggle"
+          data-testid="header-menu-more-button"
         >
-          <button
-            class="menu-list__link button-unstyled"
-            aria-haspopup="true"
-            aria-expanded="false"
-            ref="menuitem"
-            on:click="/toggle"
-            data-testid="header-menu-more-button"
-          >
-            <span class="menu-list__link-title">{{ 'actions.more' | t }}</span>
-          </button>
-        </li>
-      {% endif %}
+          <span class="menu-list__link-title">{{ 'actions.more' | t }}</span>
+        </button>
+      </li>
     {% endcapture %}
 
     <header-menu
@@ -245,7 +205,7 @@
             class: class,
             ref: 'overflowMenu',
             children: children,
-            minimum-items: overflow_minimum_items,
+            minimum-items: 2,
             data-testid: 'header-menu-overflow-list',
             attributes: 'data-skip-node-update'
           %}
@@ -257,9 +217,6 @@
         type="module"
         fetchpriority="low"
       ></script>
-      {% if block_settings.editorial_mega_enabled %}
-        <script src="{{ 'editorial-mega-menu.js' | asset_url }}" type="module" fetchpriority="low"></script>
-      {% endif %}
     </header-menu>
 {% endcase %}
 
@@ -1075,55 +1032,6 @@
       "id": "menu",
       "label": "t:settings.menu",
       "default": "main-menu"
-    },
-    {
-      "type": "header",
-      "content": "Editorial mega menu"
-    },
-    {
-      "type": "checkbox",
-      "id": "editorial_mega_enabled",
-      "label": "Enable Shop and About mega menus",
-      "default": false
-    },
-    {
-      "type": "paragraph",
-      "content": "Each selected menu uses level 1 links in the left rail, level 2 links as headings, and level 3 links beneath them."
-    },
-    {
-      "type": "link_list",
-      "id": "editorial_shop_menu",
-      "label": "Shop menu",
-      "info": "Leave blank to use the main menu above."
-    },
-    {
-      "type": "text",
-      "id": "editorial_shop_label",
-      "label": "Shop label",
-      "default": "Shop"
-    },
-    {
-      "type": "inline_richtext",
-      "id": "editorial_shop_promo",
-      "label": "Shop bottom text",
-      "default": "Discover what is new."
-    },
-    {
-      "type": "link_list",
-      "id": "editorial_about_menu",
-      "label": "About menu"
-    },
-    {
-      "type": "text",
-      "id": "editorial_about_label",
-      "label": "About label",
-      "default": "About"
-    },
-    {
-      "type": "inline_richtext",
-      "id": "editorial_about_promo",
-      "label": "About bottom text",
-      "default": "Learn more about our brand."
     },
     {
       "type": "header",

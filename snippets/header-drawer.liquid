@@ -99,34 +99,6 @@
         "
         aria-label="{{ 'accessibility.header_navigation_label' | t }}"
       >
-        {% if editorial_mega_enabled %}
-          {% liquid
-            assign mobile_shop_menu = editorial_shop_menu
-            if mobile_shop_menu == blank
-              assign mobile_shop_menu = linklist
-            endif
-          %}
-          <ul class="menu-drawer__menu has-submenu editorial-mobile-menu" role="list">
-            {% if mobile_shop_menu != blank %}
-              {% render 'editorial-mega-menu-mobile',
-                menu: mobile_shop_menu,
-                menu_key: 'shop',
-                menu_label: editorial_shop_label,
-                promo_text: editorial_shop_promo,
-                block: block
-              %}
-            {% endif %}
-            {% if editorial_about_menu != blank %}
-              {% render 'editorial-mega-menu-mobile',
-                menu: editorial_about_menu,
-                menu_key: 'about',
-                menu_label: editorial_about_label,
-                promo_text: editorial_about_promo,
-                block: block
-              %}
-            {% endif %}
-          </ul>
-        {% else %}
         <ul
           class="menu-drawer__menu has-submenu"
           role="list"
@@ -616,7 +588,6 @@
             {%- endfor -%}
           {% endif %}
         </ul>
-        {% endif %}
       </nav>
       <div
         class="menu-drawer__utility-links menu-drawer__animated-element"
