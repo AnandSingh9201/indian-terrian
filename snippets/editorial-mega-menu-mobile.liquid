@@ -1,0 +1,45 @@
+{%- doc -%}
+  Renders one editorial mega menu inside the Horizon mobile header drawer.
+{%- enddoc -%}
+
+{% assign menu_instance = 'editorial-mobile-' | append: menu_key | append: '-' | append: block.id %}
+
+<li class="editorial-mobile-menu__menu">
+  <details>
+    <summary class="menu-drawer__menu-item menu-drawer__menu-item--mainlist menu-drawer__animated-element">
+      <span class="menu-drawer__menu-item-text wrap-text">{{ menu_label | escape }}</span>
+      <span class="svg-wrapper icon-plus">{{- 'icon-plus.svg' | inline_asset_content -}}</span>
+    </summary>
+    <ul class="editorial-mobile-menu__level-one list-unstyled" role="list">
+      {% for link in menu.links %}
+        <li class="editorial-mobile-menu__level-one-item">
+          <details{% if forloop.first %} open{% endif %}>
+            <summary class="menu-drawer__menu-item menu-drawer__menu-item--parent">
+              <span class="editorial-mobile-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+              <span class="menu-drawer__menu-item-text wrap-text">{{ link.title | escape }}</span>
+              <span class="svg-wrapper icon-plus">{{- 'icon-plus.svg' | inline_asset_content -}}</span>
+            </summary>
+            <div class="editorial-mobile-menu__content" id="{{ menu_instance }}-{{ forloop.index }}">
+              <a class="editorial-mobile-menu__shop-link" href="{{ link.url }}">Shop {{ link.title | escape }}</a>
+              {% for childlink in link.links %}
+                <div class="editorial-mobile-menu__group">
+                  <a class="editorial-mobile-menu__heading" href="{{ childlink.url }}">{{ childlink.title | escape }}</a>
+                  {% if childlink.links != blank %}
+                    <ul class="list-unstyled">
+                      {% for grandchildlink in childlink.links %}
+                        <li><a href="{{ grandchildlink.url }}">{{ grandchildlink.title | escape }}</a></li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                </div>
+              {% endfor %}
+              {% if promo_text != blank %}
+                <div class="editorial-mobile-menu__promo rte">{{ promo_text }}</div>
+              {% endif %}
+            </div>
+          </details>
+        </li>
+      {% endfor %}
+    </ul>
+  </details>
+</li>

@@ -1,0 +1,95 @@
+{%- doc -%}
+  Renders an editorial two-panel Horizon header mega menu.
+
+  The configured navigation menu is interpreted as:
+  - First level: selectable links shown in the left rail
+  - Second level: column headings in the detail area
+  - Third level: links beneath each heading
+{%- enddoc -%}
+
+{% liquid
+  assign menu_instance = 'editorial-mega-' | append: menu_key | append: '-' | append: block.id
+%}
+
+<li
+  class="menu-list__list-item editorial-mega-menu__top-level"
+  on:blur="/deactivate"
+  on:pointerenter="/activate"
+  on:pointerleave="/deactivate"
+>
+  <button
+    type="button"
+    class="menu-list__link button-unstyled"
+    aria-controls="submenu-{{ menu_instance }}"
+    aria-expanded="false"
+    ref="menuitem"
+    on:click="/toggle"
+  >
+    <span class="menu-list__link-title">{{ menu_label | escape }}</span>
+  </button>
+
+  <div class="menu-list__submenu editorial-mega-menu__submenu{{ background_color_classes }}" ref="submenu[]" inert>
+    <div
+      id="submenu-{{ menu_instance }}"
+      class="menu-list__submenu-inner"
+      style="{% render 'submenu-font-styles', settings: block.settings %}"
+    >
+      <div class="editorial-mega-menu" data-editorial-mega-menu>
+        <div class="editorial-mega-menu__layout">
+          <div class="editorial-mega-menu__rail" aria-label="{{ menu_label | escape }}">
+            {% for link in menu.links %}
+              {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
+              <button
+                type="button"
+                class="editorial-mega-menu__rail-link{% if forloop.first %} is-active{% endif %}"
+                data-editorial-mega-tab
+                aria-controls="{{ panel_id }}"
+                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+              >
+                <span class="editorial-mega-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                <span>{{ link.title | escape }}</span>
+              </button>
+            {% endfor %}
+          </div>
+
+          <div class="editorial-mega-menu__details">
+            {% for link in menu.links %}
+              {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
+              <div
+                id="{{ panel_id }}"
+                class="editorial-mega-menu__panel{% if forloop.first %} is-active{% endif %}"
+                data-editorial-mega-panel
+                {% unless forloop.first %}hidden{% endunless %}
+              >
+                <a class="editorial-mega-menu__panel-title visually-hidden" href="{{ link.url }}">{{ link.title | escape }}</a>
+
+                {% if link.links != blank %}
+                  <div class="editorial-mega-menu__columns">
+                    {% for childlink in link.links %}
+                      <section class="editorial-mega-menu__column">
+                        <a class="editorial-mega-menu__heading" href="{{ childlink.url }}">{{ childlink.title | escape }}</a>
+                        {% if childlink.links != blank %}
+                          <ul class="editorial-mega-menu__links list-unstyled">
+                            {% for grandchildlink in childlink.links %}
+                              <li>
+                                <a href="{{ grandchildlink.url }}">{{ grandchildlink.title | escape }}</a>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        {% endif %}
+                      </section>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
+                {% if promo_text != blank %}
+                  <div class="editorial-mega-menu__promo rte">{{ promo_text }}</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</li>
