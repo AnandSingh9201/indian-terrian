@@ -101,7 +101,12 @@
   endcapture
 
   capture actions
-    render 'header-actions', customer_account_menu: section.settings.customer_account_menu, display_style: section.settings.actions_display_style, section: section
+    render 'header-actions',
+      customer_account_menu: section.settings.customer_account_menu,
+      display_style: section.settings.actions_display_style,
+      section: section,
+      call_phone_number: section.settings.call_phone_number,
+      wishlist_url: section.settings.wishlist_url
   endcapture
 
   if shop.customer_accounts_enabled
@@ -472,6 +477,52 @@
   <div class="editorial-header-experience">
     {{ editorial_header_blocks }}
   </div>
+
+  {% assign editorial_mobile_logo = settings.logo_inverse | default: settings.logo %}
+  <aside
+    class="editorial-mobile-drawer"
+    data-editorial-mobile-drawer
+    aria-label="Main navigation"
+    aria-hidden="true"
+    tabindex="-1"
+    hidden
+  >
+    <div class="editorial-mobile-drawer__shell">
+      <header class="editorial-mobile-drawer__header">
+        <button type="button" class="editorial-mobile-drawer__close button-unstyled" data-editorial-mobile-drawer-close>
+          <span class="svg-wrapper" aria-hidden="true">{{- 'icon-close.svg' | inline_asset_content -}}</span>
+          <span>Close</span>
+        </button>
+        <a class="editorial-mobile-drawer__logo" href="{{ routes.root_url }}" aria-label="{{ shop.name | escape }}">
+          {% if editorial_mobile_logo != blank %}
+            {% render 'image', image: editorial_mobile_logo, class: 'editorial-mobile-drawer__logo-image', height: settings.logo_height, alt_text_fallback: shop.name %}
+          {% else %}
+            <span>{{ shop.name }}</span>
+          {% endif %}
+        </a>
+      </header>
+
+      <form class="editorial-mobile-drawer__search" action="{{ routes.search_url }}" method="get" role="search">
+        <span class="svg-wrapper" aria-hidden="true">{{- 'icon-search.svg' | inline_asset_content -}}</span>
+        <label class="visually-hidden" for="EditorialMobileSearch-{{ section.id }}">Search</label>
+        <input id="EditorialMobileSearch-{{ section.id }}" type="search" name="q" placeholder="search shirts, fits, fabrics">
+      </form>
+
+      <nav class="editorial-mobile-drawer__primary-menu" data-editorial-mobile-primary-menu-slot aria-label="Main menu"></nav>
+      <div class="editorial-mobile-drawer__content" data-editorial-mobile-content-slot></div>
+      <div data-editorial-mobile-secondary-menu-slot></div>
+    </div>
+  </aside>
+{% endif %}
+
+{% if section.settings.secondary_menu != blank %}
+  <template data-editorial-secondary-menu-template>
+    <nav class="editorial-panel__secondary-menu" aria-label="Secondary menu">
+      {% for link in section.settings.secondary_menu.links %}
+        <a href="{{ link.url }}">{% render 'editorial-menu-title', title: link.title %}</a>
+      {% endfor %}
+    </nav>
+  </template>
 {% endif %}
 
 <script
@@ -983,6 +1034,65 @@
     height: var(--icon-size-md);
   }
 
+  @media screen and (min-width: 750px) {
+    #header-component [data-editorial-action-label] {
+      position: relative;
+      isolation: isolate;
+    }
+
+    #header-component [data-editorial-action-label]::after {
+      position: absolute;
+      z-index: 10;
+      top: calc(100% + var(--gap-2xs));
+      left: 50%;
+      padding: 0.55rem 0.7rem;
+      color: var(--palette-lightest);
+      background: #182443;
+      font-family: var(--font-subheading--family);
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      line-height: 1;
+      white-space: nowrap;
+      text-transform: uppercase;
+      content: attr(data-editorial-action-label);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -0.25rem);
+      transition: opacity var(--animation-speed) var(--animation-easing), transform var(--animation-speed) var(--animation-easing);
+    }
+
+    #header-component [data-editorial-action-label]:hover::after,
+    #header-component [data-editorial-action-label]:focus-visible::after {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    #header-component .header__column--right header-actions {
+      display: contents;
+    }
+
+    #header-component .header__column--right .editorial-header-action--call {
+      order: 1;
+    }
+
+    #header-component .header__column--right .search-action {
+      order: 2;
+    }
+
+    #header-component .header__column--right .editorial-header-action--account {
+      order: 3;
+    }
+
+    #header-component .header__column--right .editorial-header-action--wishlist {
+      order: 4;
+    }
+
+    #header-component .header__column--right .editorial-header-action--cart {
+      order: 5;
+    }
+  }
+
   .header:has(#Details-menu-drawer-container[open]) {
     contain: style;
   }
@@ -998,6 +1108,54 @@
 
   .header:not(.header--compact) .header__row--bottom {
     --header-padding: var(--padding-xs);
+  }
+
+  @media screen and (max-width: 749px) {
+    #header-component .header__columns {
+      --header-template-columns: var(--header-mobile-bookend) minmax(0, 1fr) var(--header-mobile-bookend) var(--header-mobile-bookend) var(--header-mobile-bookend);
+      grid-template-areas: 'leftA center rightA rightB rightC';
+    }
+
+    #header-component .header__drawer {
+      grid-area: leftA;
+    }
+
+    #header-component .header__columns .header-logo {
+      grid-area: center;
+    }
+
+    #header-component .header__columns .search-action {
+      grid-area: rightA;
+    }
+
+    #header-component .header__columns:not(:has(.search-action--hidden-on-drawer)) .search-action--hidden-on-menu {
+      display: none;
+    }
+
+    #header-component .header__columns header-actions {
+      display: contents;
+      grid-area: auto;
+    }
+
+    #header-component .editorial-header-action--call,
+    #header-component .editorial-header-action--account {
+      display: none;
+    }
+
+    #header-component .editorial-header-action--wishlist {
+      grid-area: rightB;
+    }
+
+    #header-component .editorial-header-action--cart {
+      grid-area: rightC;
+    }
+
+    #header-component .header-actions__action,
+    #header-component .search-action .header-actions__action {
+      min-width: var(--header-mobile-bookend);
+      min-height: var(--header-mobile-bookend);
+      align-items: center;
+    }
   }
 
   .header--collapse-row-paddings {
@@ -1233,13 +1391,251 @@
 
   @media screen and (max-width: 749px) {
     .editorial-header-experience {
-      inset-inline-start: 4rem;
-      gap: var(--gap-md);
+      display: none;
     }
 
     .editorial-panel-trigger {
       font-size: var(--font-size--2xs);
       letter-spacing: 0.12em;
+    }
+
+    .editorial-mobile-drawer {
+      position: fixed;
+      z-index: 1002;
+      inset: 0;
+      overflow: hidden;
+      color: #f4f0e8;
+      background: #182443;
+    }
+
+    .editorial-mobile-drawer[hidden] {
+      display: none;
+    }
+
+    .header-section:has([data-editorial-mobile-drawer]) header-drawer .menu-drawer,
+    .header-section:has([data-editorial-mobile-drawer]) header-drawer .menu-drawer__backdrop {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .editorial-mobile-drawer__shell {
+      display: grid;
+      grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100dvh;
+    }
+
+    .editorial-mobile-drawer__header {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      min-height: 4.75rem;
+      padding: var(--padding-md);
+    }
+
+    .editorial-mobile-drawer__close {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-xs);
+      justify-self: start;
+      color: inherit;
+      font-family: var(--font-subheading--family);
+      font-size: var(--font-size--2xs);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .editorial-mobile-drawer__close .svg-wrapper {
+      width: 1.5rem;
+    }
+
+    .editorial-mobile-drawer__logo {
+      grid-column: 2;
+      display: flex;
+      justify-content: center;
+      max-width: 8rem;
+      color: inherit;
+    }
+
+    .editorial-mobile-drawer__logo-image {
+      width: auto;
+      max-width: 100%;
+      max-height: 2.5rem;
+      object-fit: contain;
+    }
+
+    .editorial-mobile-drawer__search {
+      display: flex;
+      align-items: center;
+      gap: var(--gap-sm);
+      margin-inline: var(--padding-md);
+      padding: 0 0 var(--padding-sm);
+      border-bottom: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+    }
+
+    .editorial-mobile-drawer__search input {
+      width: 100%;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      outline: 0;
+      font: inherit;
+      font-family: var(--font-accent--family);
+      font-size: var(--font-size--sm);
+      font-style: var(--font-accent--style);
+    }
+
+    .editorial-mobile-drawer__search input::placeholder {
+      color: inherit;
+      opacity: 0.75;
+    }
+
+    .editorial-mobile-drawer__primary-menu {
+      display: flex;
+      gap: var(--gap-md);
+      min-height: 3rem;
+      padding-inline: var(--padding-md);
+      border-bottom: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+      overflow-x: auto;
+    }
+
+    .editorial-mobile-drawer__primary-menu .editorial-panel-trigger {
+      position: relative;
+      display: flex;
+      align-items: center;
+      align-self: stretch;
+      flex: none;
+      color: inherit;
+    }
+
+    .editorial-mobile-drawer__primary-menu .editorial-panel-trigger.is-active::after {
+      position: absolute;
+      inset-inline: 0;
+      inset-block-end: 0;
+      height: 2px;
+      background: currentColor;
+      content: '';
+    }
+
+    .editorial-mobile-drawer__content {
+      min-height: 0;
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding: var(--padding-lg) var(--padding-md);
+    }
+
+    .editorial-mobile-menu-content {
+      min-height: 0;
+      padding-block-end: var(--padding-xl);
+    }
+
+    .editorial-mobile-drawer [data-editorial-mobile-secondary-menu-slot] {
+      min-width: 0;
+      align-self: end;
+    }
+
+    .editorial-mobile-menu-list {
+      margin: 0;
+    }
+
+    .editorial-mobile-menu-list__item {
+      border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    }
+
+    .editorial-mobile-menu-list__item summary,
+    .editorial-mobile-menu-list__direct-link {
+      display: grid;
+      grid-template-columns: 2rem minmax(0, 1fr) auto;
+      align-items: center;
+      gap: var(--gap-sm);
+      min-height: 3.75rem;
+      color: inherit;
+      font-family: var(--menu-parent-font-family, var(--font-heading--family));
+      font-size: clamp(1.25rem, 6vw, 1.7rem);
+      font-style: var(--menu-parent-font-style, normal);
+      line-height: 1.1;
+      text-decoration: none;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .editorial-mobile-menu-list__item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .editorial-mobile-menu-list__index {
+      font-family: var(--font-subheading--family);
+      font-size: var(--font-size--2xs);
+      font-style: normal;
+      letter-spacing: 0.08em;
+    }
+
+    .editorial-mobile-menu-list__item details[open] > summary .icon-plus {
+      transform: rotate(45deg);
+    }
+
+    .editorial-mobile-menu-list__submenu {
+      display: grid;
+      gap: var(--gap-lg);
+      padding: 0 0 var(--padding-lg) 2rem;
+    }
+
+    .editorial-mobile-menu-list__group {
+      display: grid;
+      gap: var(--gap-xs);
+    }
+
+    .editorial-mobile-menu-list__heading,
+    .editorial-mobile-menu-list__group li a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .editorial-mobile-menu-list__heading {
+      font-family: var(--menu-parent-font-family, var(--font-heading--family));
+      font-size: var(--font-size--md);
+      font-weight: var(--menu-parent-font-weight, 600);
+    }
+
+    .editorial-mobile-menu-list__group ul {
+      display: grid;
+      gap: var(--gap-2xs);
+    }
+
+    .editorial-mobile-menu-list__group li a {
+      opacity: 0.85;
+      font-size: var(--font-size--sm);
+    }
+
+    .editorial-mobile-menu-list__promo {
+      padding-top: var(--padding-sm);
+      font-family: var(--font-accent--family);
+      font-size: var(--font-size--lg);
+      font-style: var(--font-accent--style);
+      line-height: 1.2;
+      display: none;
+    }
+
+    .editorial-mobile-drawer .editorial-panel__secondary-menu {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--gap-md);
+      min-height: 3.75rem;
+      padding: var(--padding-sm) var(--padding-md);
+      border-top: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+    }
+
+    .editorial-mobile-drawer .editorial-panel__secondary-menu a {
+      color: inherit;
+      font-family: var(--font-subheading--family);
+      font-size: var(--font-size--2xs);
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      text-transform: uppercase;
     }
   }
 {% endstylesheet %}
@@ -1330,6 +1726,32 @@
         }
       ],
       "default": "top"
+    },
+    {
+      "type": "header",
+      "content": "Editorial menu panel"
+    },
+    {
+      "type": "link_list",
+      "id": "secondary_menu",
+      "label": "Secondary menu",
+      "info": "Links shown in the fixed bottom banner of every editorial mega-menu panel."
+    },
+    {
+      "type": "header",
+      "content": "Header action links"
+    },
+    {
+      "type": "text",
+      "id": "call_phone_number",
+      "label": "Call phone number",
+      "info": "Shows a call icon in the desktop header and opens the phone dialler."
+    },
+    {
+      "type": "url",
+      "id": "wishlist_url",
+      "label": "Wishlist page link",
+      "info": "Choose the page or app URL for the wishlist icon."
     },
     {
       "type": "header",

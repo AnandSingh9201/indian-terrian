@@ -1,95 +1,635 @@
 {%- doc -%}
-  Renders an editorial two-panel Horizon header mega menu.
-
-  The configured navigation menu is interpreted as:
-  - First level: selectable links shown in the left rail
-  - Second level: column headings in the detail area
-  - Third level: links beneath each heading
+  A standalone editorial mega-menu panel for the Header section.
 {%- enddoc -%}
 
 {% liquid
-  assign menu_instance = 'editorial-mega-' | append: menu_key | append: '-' | append: block.id
+  assign menu = block.settings.menu
+  assign menu_label = block.settings.label | default: 'Shop'
+  assign menu_instance = 'editorial-mega-' | append: block.id
+  assign panel_background = block.settings.background_color | default: '#182443'
+  assign panel_text = block.settings.text_color | default: '#F4F0E8'
+  assign panel_logo = settings.logo_inverse | default: settings.logo
+  assign default_active_menu = block.settings.default_active_menu | strip | downcase
+  assign promo_texts = block.settings.promo_text_by_menu | newline_to_br | replace: '<br />', '|' | split: '|'
+  assign first_submenu_index = 0
+  assign configured_default_index = 0
+
+  for link in menu.links
+    if link.links != blank
+      if first_submenu_index == 0
+        assign first_submenu_index = forloop.index
+      endif
+
+      assign menu_item_title = link.title | remove: '<hl>' | remove: '</hl>' | remove: '<b>' | remove: '</b>' | strip | downcase
+      if menu_item_title == default_active_menu
+        assign configured_default_index = forloop.index
+      endif
+    endif
+  endfor
+
+  if configured_default_index > 0
+    assign default_active_index = configured_default_index
+  elsif first_submenu_index > 0
+    assign default_active_index = first_submenu_index
+  else
+    assign default_active_index = 1
+  endif
 %}
 
-<li
-  class="menu-list__list-item editorial-mega-menu__top-level"
-  on:blur="/deactivate"
-  on:pointerenter="/activate"
-  on:pointerleave="/deactivate"
+<div
+  class="editorial-panel-block"
+  style="--editorial-panel-background: {{ panel_background }}; --editorial-panel-text: {{ panel_text }};"
+  {{ block.shopify_attributes }}
 >
   <button
     type="button"
-    class="menu-list__link button-unstyled"
-    aria-controls="submenu-{{ menu_instance }}"
+    class="editorial-panel-trigger button-unstyled"
+    data-editorial-panel-open="{{ menu_instance }}"
+    aria-controls="{{ menu_instance }}"
     aria-expanded="false"
-    ref="menuitem"
-    on:click="/toggle"
   >
-    <span class="menu-list__link-title">{{ menu_label | escape }}</span>
+    {{ menu_label | escape }}
   </button>
 
-  <div class="menu-list__submenu editorial-mega-menu__submenu{{ background_color_classes }}" ref="submenu[]" inert>
-    <div
-      id="submenu-{{ menu_instance }}"
-      class="menu-list__submenu-inner"
-      style="{% render 'submenu-font-styles', settings: block.settings %}"
-    >
-      <div class="editorial-mega-menu" data-editorial-mega-menu>
-        <div class="editorial-mega-menu__layout">
-          <div class="editorial-mega-menu__rail" aria-label="{{ menu_label | escape }}">
-            {% for link in menu.links %}
-              {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
-              <button
-                type="button"
-                class="editorial-mega-menu__rail-link{% if forloop.first %} is-active{% endif %}"
-                data-editorial-mega-tab
-                aria-controls="{{ panel_id }}"
-                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-              >
-                <span class="editorial-mega-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
-                <span>{{ link.title | escape }}</span>
-              </button>
-            {% endfor %}
-          </div>
+  <section
+    id="{{ menu_instance }}"
+    class="editorial-panel"
+    data-editorial-panel
+    role="dialog"
+    aria-modal="true"
+    aria-label="{{ menu_label | escape }} menu"
+    aria-hidden="true"
+    tabindex="-1"
+    hidden
+  >
+    <button type="button" class="editorial-panel__backdrop button-unstyled" data-editorial-panel-close aria-label="Close {{ menu_label | escape }} menu"></button>
 
-          <div class="editorial-mega-menu__details">
-            {% for link in menu.links %}
-              {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
-              <div
-                id="{{ panel_id }}"
-                class="editorial-mega-menu__panel{% if forloop.first %} is-active{% endif %}"
-                data-editorial-mega-panel
-                {% unless forloop.first %}hidden{% endunless %}
-              >
-                <a class="editorial-mega-menu__panel-title visually-hidden" href="{{ link.url }}">{{ link.title | escape }}</a>
+    <div class="editorial-panel__shell">
+      <header class="editorial-panel__header">
+        <button type="button" class="editorial-panel__close button-unstyled" data-editorial-panel-close>
+          <span class="svg-wrapper" aria-hidden="true">{{- 'icon-close.svg' | inline_asset_content -}}</span>
+          <span>Close</span>
+        </button>
 
+        <a class="editorial-panel__logo" href="{{ routes.root_url }}" aria-label="{{ shop.name | escape }}">
+          {% if panel_logo != blank %}
+            {% render 'image', image: panel_logo, class: 'editorial-panel__logo-image', height: settings.logo_height, alt_text_fallback: shop.name %}
+          {% else %}
+            <span>{{ shop.name }}</span>
+          {% endif %}
+        </a>
+
+        <form class="editorial-panel__search" action="{{ routes.search_url }}" method="get" role="search">
+          <span class="svg-wrapper" aria-hidden="true">{{- 'icon-search.svg' | inline_asset_content -}}</span>
+          <label class="visually-hidden" for="EditorialSearch-{{ block.id }}">Search</label>
+          <input id="EditorialSearch-{{ block.id }}" type="search" name="q" placeholder="search shirts, fits, fabrics">
+        </form>
+      </header>
+
+      <nav class="editorial-panel__primary-menu" data-editorial-primary-menu-slot aria-label="Main menu"></nav>
+
+      <div class="editorial-panel__body" style="{% render 'submenu-font-styles', settings: block.settings %}">
+        <div class="editorial-mega-menu" data-editorial-mega-menu>
+          <div class="editorial-mega-menu__layout">
+            <div class="editorial-mega-menu__rail" aria-label="{{ menu_label | escape }}">
+              {% for link in menu.links %}
+                {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
                 {% if link.links != blank %}
-                  <div class="editorial-mega-menu__columns">
-                    {% for childlink in link.links %}
-                      <section class="editorial-mega-menu__column">
-                        <a class="editorial-mega-menu__heading" href="{{ childlink.url }}">{{ childlink.title | escape }}</a>
-                        {% if childlink.links != blank %}
-                          <ul class="editorial-mega-menu__links list-unstyled">
-                            {% for grandchildlink in childlink.links %}
-                              <li>
-                                <a href="{{ grandchildlink.url }}">{{ grandchildlink.title | escape }}</a>
-                              </li>
-                            {% endfor %}
-                          </ul>
-                        {% endif %}
-                      </section>
-                    {% endfor %}
-                  </div>
+                  <button
+                    type="button"
+                    class="editorial-mega-menu__rail-link{% if forloop.index == default_active_index %} is-active{% endif %}"
+                    data-editorial-mega-tab
+                    aria-controls="{{ panel_id }}"
+                    aria-selected="{% if forloop.index == default_active_index %}true{% else %}false{% endif %}"
+                  >
+                    <span class="editorial-mega-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                    <span>{% render 'editorial-menu-title', title: link.title %}</span>
+                  </button>
+                {% else %}
+                  <a href="{{ link.url }}" class="editorial-mega-menu__rail-link editorial-mega-menu__rail-link--direct">
+                    <span class="editorial-mega-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                    <span>{% render 'editorial-menu-title', title: link.title %}</span>
+                  </a>
                 {% endif %}
+              {% endfor %}
+            </div>
 
-                {% if promo_text != blank %}
-                  <div class="editorial-mega-menu__promo rte">{{ promo_text }}</div>
-                {% endif %}
-              </div>
-            {% endfor %}
+            <div class="editorial-mega-menu__details">
+              {% for link in menu.links %}
+                {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
+                {% liquid
+                  assign panel_promo_text = promo_texts[forloop.index0] | strip
+                %}
+                <div
+                  id="{{ panel_id }}"
+                  class="editorial-mega-menu__panel{% if forloop.index == default_active_index %} is-active{% endif %}"
+                  data-editorial-mega-panel
+                  {% unless forloop.index == default_active_index %}hidden{% endunless %}
+                >
+                  <a class="editorial-mega-menu__panel-title visually-hidden" href="{{ link.url }}">{% render 'editorial-menu-title', title: link.title %}</a>
+
+                  {% if link.links != blank %}
+                    <div class="editorial-mega-menu__columns">
+                      {% for childlink in link.links %}
+                        <section class="editorial-mega-menu__column">
+                          <a class="editorial-mega-menu__heading" href="{{ childlink.url }}">{% render 'editorial-menu-title', title: childlink.title %}</a>
+                          {% if childlink.links != blank %}
+                            <ul class="editorial-mega-menu__links list-unstyled">
+                              {% for grandchildlink in childlink.links %}
+                                <li><a href="{{ grandchildlink.url }}">{% render 'editorial-menu-title', title: grandchildlink.title %}</a></li>
+                              {% endfor %}
+                            </ul>
+                          {% endif %}
+                        </section>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+
+                  {% if panel_promo_text != blank %}
+                    <div class="editorial-mega-menu__promo">{{ panel_promo_text | escape | newline_to_br }}</div>
+                  {% elsif block.settings.promo_text != blank %}
+                    <div class="editorial-mega-menu__promo rte">{{ block.settings.promo_text }}</div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
           </div>
         </div>
       </div>
+
+      <div data-editorial-secondary-menu-slot></div>
     </div>
-  </div>
-</li>
+  </section>
+
+  <template data-editorial-mobile-menu-template data-editorial-mobile-menu-id="{{ menu_instance }}">
+    <div class="editorial-mobile-menu-content" data-editorial-mobile-menu-content="{{ menu_instance }}" hidden>
+      <ul class="editorial-mobile-menu-list list-unstyled" role="list">
+        {% for link in menu.links %}
+          {% liquid
+            assign mobile_panel_promo_text = promo_texts[forloop.index0] | strip
+            assign mobile_item_id = menu_instance | append: '-mobile-' | append: forloop.index
+          %}
+          <li class="editorial-mobile-menu-list__item">
+            {% if link.links != blank %}
+              <details>
+                <summary>
+                  <span class="editorial-mobile-menu-list__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                  <span>{% render 'editorial-menu-title', title: link.title %}</span>
+                  <span class="svg-wrapper icon-plus" aria-hidden="true">{{- 'icon-plus.svg' | inline_asset_content -}}</span>
+                </summary>
+                <div id="{{ mobile_item_id }}" class="editorial-mobile-menu-list__submenu">
+                  {% for childlink in link.links %}
+                    <section class="editorial-mobile-menu-list__group">
+                      <a href="{{ childlink.url }}" class="editorial-mobile-menu-list__heading">{% render 'editorial-menu-title', title: childlink.title %}</a>
+                      {% if childlink.links != blank %}
+                        <ul class="list-unstyled">
+                          {% for grandchildlink in childlink.links %}
+                            <li><a href="{{ grandchildlink.url }}">{% render 'editorial-menu-title', title: grandchildlink.title %}</a></li>
+                          {% endfor %}
+                        </ul>
+                      {% endif %}
+                    </section>
+                  {% endfor %}
+                  {% if mobile_panel_promo_text != blank %}
+                    <div class="editorial-mobile-menu-list__promo">{{ mobile_panel_promo_text | escape | newline_to_br }}</div>
+                  {% elsif block.settings.promo_text != blank %}
+                    <div class="editorial-mobile-menu-list__promo rte">{{ block.settings.promo_text }}</div>
+                  {% endif %}
+                </div>
+              </details>
+            {% else %}
+              <a href="{{ link.url }}" class="editorial-mobile-menu-list__direct-link">
+                <span class="editorial-mobile-menu-list__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                <span>{% render 'editorial-menu-title', title: link.title %}</span>
+              </a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </template>
+</div>
+
+{% stylesheet %}
+  .editorial-panel {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    overflow: auto;
+    color: var(--editorial-panel-text);
+    background: var(--editorial-panel-background);
+  }
+
+  .editorial-panel[hidden] {
+    display: none;
+  }
+
+  .editorial-panel__backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: default;
+  }
+
+  .editorial-panel__shell {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    min-height: 100dvh;
+  }
+
+  .editorial-panel__header {
+    display: grid;
+    grid-template-columns: 1fr auto minmax(16rem, 1fr);
+    gap: var(--gap-lg);
+    align-items: center;
+    min-height: 9.75rem;
+    padding: var(--padding-xl) clamp(1.25rem, 3vw, 3.5rem);
+    border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  .editorial-panel__close,
+  .editorial-panel__search {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+  }
+
+  .editorial-panel__close {
+    justify-self: start;
+    color: inherit;
+    font-family: var(--font-subheading--family);
+    font-size: var(--font-size--xs);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .editorial-panel__close .svg-wrapper {
+    width: 1.9rem;
+  }
+
+  .editorial-panel__logo {
+    display: flex;
+    justify-content: center;
+    max-width: 12rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .editorial-panel__logo-image {
+    width: auto;
+    max-width: 100%;
+    max-height: 3.5rem;
+    object-fit: contain;
+  }
+
+  .editorial-panel__search {
+    justify-self: end;
+    width: min(100%, 24rem);
+    padding-bottom: var(--padding-2xs);
+    color: inherit;
+    border-bottom: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  }
+
+  .editorial-panel__search input {
+    width: 100%;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    font: inherit;
+    font-family: var(--font-accent--family);
+    font-style: var(--font-accent--style);
+  }
+
+  .editorial-panel__search input::placeholder {
+    color: inherit;
+    opacity: 0.75;
+  }
+
+  .editorial-panel__primary-menu {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 2vw, 2.75rem);
+    min-height: 4rem;
+    padding-inline: clamp(1.25rem, 3vw, 3.5rem);
+    border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  .editorial-panel__primary-menu .editorial-panel-trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    color: inherit;
+  }
+
+  .editorial-panel__primary-menu .editorial-panel-trigger.is-active::after {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    height: 2px;
+    background: currentColor;
+    content: '';
+  }
+
+  .editorial-panel__secondary-menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gap-lg);
+    min-height: 4rem;
+    padding: var(--padding-sm) clamp(1.25rem, 3vw, 3.5rem);
+    border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  .editorial-panel__secondary-menu a {
+    color: inherit;
+    font-family: var(--font-subheading--family);
+    font-size: var(--font-size--xs);
+    letter-spacing: 0.14em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .editorial-menu-highlight {
+    color: #efd59e;
+  }
+
+  .editorial-menu-title-strong {
+    font-weight: 700;
+  }
+
+  .editorial-panel__body {
+    min-height: 0;
+    padding: clamp(1.5rem, 3vw, 3.5rem);
+  }
+
+  .editorial-mega-menu__layout {
+    display: grid;
+    grid-template-columns: minmax(15rem, 30%) minmax(0, 1fr);
+    min-height: calc(100dvh - 16rem);
+  }
+
+  .editorial-mega-menu__rail {
+    display: grid;
+    align-content: center;
+    gap: var(--gap-xs);
+    padding-inline-end: var(--gap-2xl);
+    border-inline-end: 1px dashed color-mix(in srgb, currentColor 40%, transparent);
+  }
+
+  .editorial-mega-menu__rail-link {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: var(--gap-sm);
+    width: 100%;
+    padding: var(--padding-2xs) 0;
+    color: color-mix(in srgb, currentColor 62%, transparent);
+    background: transparent;
+    border: 0;
+    font: inherit;
+    font-family: var(--menu-parent-font-family);
+    font-size: clamp(1.25rem, 1.8vw, 2.2rem);
+    font-style: var(--menu-parent-font-style);
+    line-height: 1.08;
+    text-align: start;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .editorial-mega-menu__rail-link:hover,
+  .editorial-mega-menu__rail-link:focus-visible,
+  .editorial-mega-menu__rail-link.is-active {
+    color: currentColor;
+  }
+
+  .editorial-mega-menu__index {
+    font-family: var(--font-subheading--family);
+    font-size: var(--font-size--2xs);
+    font-style: normal;
+    letter-spacing: 0.08em;
+    line-height: 1.5;
+  }
+
+  .editorial-mega-menu__details {
+    min-width: 0;
+    padding-inline-start: var(--gap-2xl);
+  }
+
+  .editorial-mega-menu__panel {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100dvh - 16rem);
+  }
+
+  .editorial-mega-menu__panel[hidden] {
+    display: none;
+  }
+
+  .editorial-mega-menu__columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--gap-xl) var(--gap-2xl);
+  }
+
+  .editorial-mega-menu__column {
+    min-width: 0;
+  }
+
+  .editorial-mega-menu__heading {
+    display: inline-block;
+    margin-bottom: var(--gap-sm);
+    color: inherit;
+    font-family: var(--menu-parent-font-family);
+    font-size: var(--menu-parent-font-size);
+    font-style: var(--menu-parent-font-style);
+    font-weight: var(--menu-parent-font-weight);
+    line-height: var(--menu-parent-font-line-height);
+    text-decoration: none;
+  }
+
+  .editorial-mega-menu__links {
+    display: grid;
+    gap: var(--gap-2xs);
+  }
+
+  .editorial-mega-menu__links a {
+    color: inherit;
+    opacity: 0.9;
+    font-family: var(--menu-child-font-family);
+    font-size: var(--menu-child-font-size);
+    font-style: var(--menu-child-font-style);
+    line-height: var(--menu-child-font-line-height);
+    text-decoration: none;
+  }
+
+  .editorial-mega-menu__links a:hover,
+  .editorial-mega-menu__links a:focus-visible,
+  .editorial-mega-menu__heading:hover,
+  .editorial-mega-menu__heading:focus-visible {
+    color: inherit;
+    opacity: 0.7;
+  }
+
+  .editorial-mega-menu__promo {
+    max-width: 48rem;
+    margin-top: auto;
+    padding-top: var(--gap-2xl);
+    color: inherit;
+    font-family: var(--font-accent--family);
+    font-size: clamp(1.35rem, 2vw, 2.4rem);
+    font-style: var(--font-accent--style);
+    line-height: 1.2;
+  }
+
+  @media screen and (max-width: 749px) {
+    .editorial-panel__header {
+      grid-template-columns: 1fr auto 1fr;
+      min-height: 0;
+      padding: var(--padding-md);
+    }
+
+    .editorial-panel__close span:last-child {
+      display: none;
+    }
+
+    .editorial-panel__search {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      justify-self: stretch;
+      width: 100%;
+    }
+
+    .editorial-panel__primary-menu {
+      gap: var(--gap-md);
+      min-height: 3.5rem;
+      padding-inline: var(--padding-md);
+      overflow-x: auto;
+    }
+
+    .editorial-panel__secondary-menu {
+      gap: var(--gap-md);
+      min-height: 3.5rem;
+      padding-inline: var(--padding-md);
+    }
+
+    .editorial-panel__body {
+      padding: var(--padding-lg) var(--padding-md);
+    }
+
+    .editorial-mega-menu__layout {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+
+    .editorial-mega-menu__rail {
+      align-content: start;
+      padding: 0 0 var(--padding-md);
+      border-inline-end: 0;
+      border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    }
+
+    .editorial-mega-menu__details {
+      padding: var(--padding-lg) 0 0;
+    }
+
+    .editorial-mega-menu__panel {
+      min-height: 0;
+    }
+
+    .editorial-mega-menu__columns {
+      grid-template-columns: 1fr;
+      gap: var(--gap-lg);
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Editorial mega menu",
+  "tag": null,
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Navigation menu"
+    },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Header label",
+      "default": "Shop"
+    },
+    {
+      "type": "text",
+      "id": "default_active_menu",
+      "label": "Default active menu name",
+      "info": "Enter a level 1 menu item title exactly, for example: The Guide. Leave blank to show the first item."
+    },
+    {
+      "type": "textarea",
+      "id": "promo_text_by_menu",
+      "label": "Bottom text in menu order",
+      "info": "Enter one message for each level 1 menu item, in the same order. Separate messages with a vertical bar | or put each message on its own line."
+    },
+    {
+      "type": "inline_richtext",
+      "id": "promo_text",
+      "label": "Fallback bottom text",
+      "default": "Discover what is new."
+    },
+    {
+      "type": "header",
+      "content": "Appearance"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Mega menu background",
+      "default": "#182443"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Mega menu text",
+      "default": "#F4F0E8"
+    },
+    {
+      "type": "select",
+      "id": "type_font_primary_link",
+      "label": "Mega menu font",
+      "options": [
+        { "value": "body", "label": "Body" },
+        { "value": "subheading", "label": "Subheading" },
+        { "value": "heading", "label": "Heading" },
+        { "value": "accent", "label": "Accent" }
+      ],
+      "default": "heading"
+    },
+    {
+      "type": "select",
+      "id": "menu_font_style",
+      "label": "Link size",
+      "options": [
+        { "value": "regular", "label": "Small" },
+        { "value": "inverse", "label": "Medium" },
+        { "value": "inverse_large", "label": "Large" }
+      ],
+      "default": "inverse"
+    },
+    {
+      "type": "select",
+      "id": "type_case_primary_link",
+      "label": "Text case",
+      "options": [
+        { "value": "none", "label": "Default" },
+        { "value": "uppercase", "label": "Uppercase" }
+      ],
+      "default": "none"
+    }
+  ]
+}
+{% endschema %}

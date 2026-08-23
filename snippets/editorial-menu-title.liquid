@@ -1,0 +1,18 @@
+{%- doc -%}
+  Safely renders a navigation title with optional editorial formatting.
+
+  The only interpreted tags are:
+  - <hl>...</hl> for the highlight colour
+  - <b>...</b> for a bold weight
+
+  @param {string} title - Navigation title to render.
+{%- enddoc -%}
+
+{%- liquid
+  assign title_markup = title | escape
+  assign title_markup = title_markup | replace: '&lt;hl&gt;', '<span class="editorial-menu-highlight">'
+  assign title_markup = title_markup | replace: '&lt;/hl&gt;', '</span>'
+  assign title_markup = title_markup | replace: '&lt;b&gt;', '<strong class="editorial-menu-title-strong">'
+  assign title_markup = title_markup | replace: '&lt;/b&gt;', '</strong>'
+-%}
+{{- title_markup -}}

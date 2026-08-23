@@ -9,6 +9,31 @@
   assign panel_background = block.settings.background_color | default: '#182443'
   assign panel_text = block.settings.text_color | default: '#F4F0E8'
   assign panel_logo = settings.logo_inverse | default: settings.logo
+  assign default_active_menu = block.settings.default_active_menu | strip | downcase
+  assign promo_texts = block.settings.promo_text_by_menu | newline_to_br | replace: '<br />', '|' | split: '|'
+  assign first_submenu_index = 0
+  assign configured_default_index = 0
+
+  for link in menu.links
+    if link.links != blank
+      if first_submenu_index == 0
+        assign first_submenu_index = forloop.index
+      endif
+
+      assign menu_item_title = link.title | remove: '<hl>' | remove: '</hl>' | remove: '<b>' | remove: '</b>' | strip | downcase
+      if menu_item_title == default_active_menu
+        assign configured_default_index = forloop.index
+      endif
+    endif
+  endfor
+
+  if configured_default_index > 0
+    assign default_active_index = configured_default_index
+  elsif first_submenu_index > 0
+    assign default_active_index = first_submenu_index
+  else
+    assign default_active_index = 1
+  endif
 %}
 
 <div
@@ -61,45 +86,57 @@
         </form>
       </header>
 
+      <nav class="editorial-panel__primary-menu" data-editorial-primary-menu-slot aria-label="Main menu"></nav>
+
       <div class="editorial-panel__body" style="{% render 'submenu-font-styles', settings: block.settings %}">
         <div class="editorial-mega-menu" data-editorial-mega-menu>
           <div class="editorial-mega-menu__layout">
             <div class="editorial-mega-menu__rail" aria-label="{{ menu_label | escape }}">
               {% for link in menu.links %}
                 {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
-                <button
-                  type="button"
-                  class="editorial-mega-menu__rail-link{% if forloop.first %} is-active{% endif %}"
-                  data-editorial-mega-tab
-                  aria-controls="{{ panel_id }}"
-                  aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
-                >
-                  <span class="editorial-mega-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
-                  <span>{{ link.title | escape }}</span>
-                </button>
+                {% if link.links != blank %}
+                  <button
+                    type="button"
+                    class="editorial-mega-menu__rail-link{% if forloop.index == default_active_index %} is-active{% endif %}"
+                    data-editorial-mega-tab
+                    aria-controls="{{ panel_id }}"
+                    aria-selected="{% if forloop.index == default_active_index %}true{% else %}false{% endif %}"
+                  >
+                    <span class="editorial-mega-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                    <span>{% render 'editorial-menu-title', title: link.title %}</span>
+                  </button>
+                {% else %}
+                  <a href="{{ link.url }}" class="editorial-mega-menu__rail-link editorial-mega-menu__rail-link--direct">
+                    <span class="editorial-mega-menu__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                    <span>{% render 'editorial-menu-title', title: link.title %}</span>
+                  </a>
+                {% endif %}
               {% endfor %}
             </div>
 
             <div class="editorial-mega-menu__details">
               {% for link in menu.links %}
                 {% assign panel_id = menu_instance | append: '-panel-' | append: forloop.index %}
+                {% liquid
+                  assign panel_promo_text = promo_texts[forloop.index0] | strip
+                %}
                 <div
                   id="{{ panel_id }}"
-                  class="editorial-mega-menu__panel{% if forloop.first %} is-active{% endif %}"
+                  class="editorial-mega-menu__panel{% if forloop.index == default_active_index %} is-active{% endif %}"
                   data-editorial-mega-panel
-                  {% unless forloop.first %}hidden{% endunless %}
+                  {% unless forloop.index == default_active_index %}hidden{% endunless %}
                 >
-                  <a class="editorial-mega-menu__panel-title visually-hidden" href="{{ link.url }}">{{ link.title | escape }}</a>
+                  <a class="editorial-mega-menu__panel-title visually-hidden" href="{{ link.url }}">{% render 'editorial-menu-title', title: link.title %}</a>
 
                   {% if link.links != blank %}
                     <div class="editorial-mega-menu__columns">
                       {% for childlink in link.links %}
                         <section class="editorial-mega-menu__column">
-                          <a class="editorial-mega-menu__heading" href="{{ childlink.url }}">{{ childlink.title | escape }}</a>
+                          <a class="editorial-mega-menu__heading" href="{{ childlink.url }}">{% render 'editorial-menu-title', title: childlink.title %}</a>
                           {% if childlink.links != blank %}
                             <ul class="editorial-mega-menu__links list-unstyled">
                               {% for grandchildlink in childlink.links %}
-                                <li><a href="{{ grandchildlink.url }}">{{ grandchildlink.title | escape }}</a></li>
+                                <li><a href="{{ grandchildlink.url }}">{% render 'editorial-menu-title', title: grandchildlink.title %}</a></li>
                               {% endfor %}
                             </ul>
                           {% endif %}
@@ -108,7 +145,9 @@
                     </div>
                   {% endif %}
 
-                  {% if block.settings.promo_text != blank %}
+                  {% if panel_promo_text != blank %}
+                    <div class="editorial-mega-menu__promo">{{ panel_promo_text | escape | newline_to_br }}</div>
+                  {% elsif block.settings.promo_text != blank %}
                     <div class="editorial-mega-menu__promo rte">{{ block.settings.promo_text }}</div>
                   {% endif %}
                 </div>
@@ -117,8 +156,58 @@
           </div>
         </div>
       </div>
+
+      <div data-editorial-secondary-menu-slot></div>
     </div>
   </section>
+
+  <template data-editorial-mobile-menu-template data-editorial-mobile-menu-id="{{ menu_instance }}">
+    <div class="editorial-mobile-menu-content" data-editorial-mobile-menu-content="{{ menu_instance }}" hidden>
+      <ul class="editorial-mobile-menu-list list-unstyled" role="list">
+        {% for link in menu.links %}
+          {% liquid
+            assign mobile_panel_promo_text = promo_texts[forloop.index0] | strip
+            assign mobile_item_id = menu_instance | append: '-mobile-' | append: forloop.index
+          %}
+          <li class="editorial-mobile-menu-list__item">
+            {% if link.links != blank %}
+              <details>
+                <summary>
+                  <span class="editorial-mobile-menu-list__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                  <span>{% render 'editorial-menu-title', title: link.title %}</span>
+                  <span class="svg-wrapper icon-plus" aria-hidden="true">{{- 'icon-plus.svg' | inline_asset_content -}}</span>
+                </summary>
+                <div id="{{ mobile_item_id }}" class="editorial-mobile-menu-list__submenu">
+                  {% for childlink in link.links %}
+                    <section class="editorial-mobile-menu-list__group">
+                      <a href="{{ childlink.url }}" class="editorial-mobile-menu-list__heading">{% render 'editorial-menu-title', title: childlink.title %}</a>
+                      {% if childlink.links != blank %}
+                        <ul class="list-unstyled">
+                          {% for grandchildlink in childlink.links %}
+                            <li><a href="{{ grandchildlink.url }}">{% render 'editorial-menu-title', title: grandchildlink.title %}</a></li>
+                          {% endfor %}
+                        </ul>
+                      {% endif %}
+                    </section>
+                  {% endfor %}
+                  {% if mobile_panel_promo_text != blank %}
+                    <div class="editorial-mobile-menu-list__promo" style="--editorial-mobile-promo-background: {{ panel_background }};">{{ mobile_panel_promo_text | escape | newline_to_br }}</div>
+                  {% elsif block.settings.promo_text != blank %}
+                    <div class="editorial-mobile-menu-list__promo rte" style="--editorial-mobile-promo-background: {{ panel_background }};">{{ block.settings.promo_text }}</div>
+                  {% endif %}
+                </div>
+              </details>
+            {% else %}
+              <a href="{{ link.url }}" class="editorial-mobile-menu-list__direct-link">
+                <span class="editorial-mobile-menu-list__index" aria-hidden="true">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</span>
+                <span>{% render 'editorial-menu-title', title: link.title %}</span>
+              </a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </template>
 </div>
 
 {% stylesheet %}
@@ -146,7 +235,7 @@
   .editorial-panel__shell {
     position: relative;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     min-height: 100dvh;
   }
 
@@ -220,6 +309,59 @@
     opacity: 0.75;
   }
 
+  .editorial-panel__primary-menu {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 2vw, 2.75rem);
+    min-height: 4rem;
+    padding-inline: clamp(1.25rem, 3vw, 3.5rem);
+    border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  .editorial-panel__primary-menu .editorial-panel-trigger {
+    position: relative;
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    color: inherit;
+  }
+
+  .editorial-panel__primary-menu .editorial-panel-trigger.is-active::after {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    height: 2px;
+    background: currentColor;
+    content: '';
+  }
+
+  .editorial-panel__secondary-menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gap-lg);
+    min-height: 4rem;
+    padding: var(--padding-sm) clamp(1.25rem, 3vw, 3.5rem);
+    border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  .editorial-panel__secondary-menu a {
+    color: inherit;
+    font-family: var(--font-subheading--family);
+    font-size: var(--font-size--xs);
+    letter-spacing: 0.14em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .editorial-menu-highlight {
+    color: #efd59e;
+  }
+
+  .editorial-menu-title-strong {
+    font-weight: 700;
+  }
+
   .editorial-panel__body {
     min-height: 0;
     padding: clamp(1.5rem, 3vw, 3.5rem);
@@ -254,6 +396,7 @@
     font-style: var(--menu-parent-font-style);
     line-height: 1.08;
     text-align: start;
+    text-decoration: none;
     cursor: pointer;
   }
 
@@ -360,6 +503,19 @@
       width: 100%;
     }
 
+    .editorial-panel__primary-menu {
+      gap: var(--gap-md);
+      min-height: 3.5rem;
+      padding-inline: var(--padding-md);
+      overflow-x: auto;
+    }
+
+    .editorial-panel__secondary-menu {
+      gap: var(--gap-md);
+      min-height: 3.5rem;
+      padding-inline: var(--padding-md);
+    }
+
     .editorial-panel__body {
       padding: var(--padding-lg) var(--padding-md);
     }
@@ -408,9 +564,21 @@
       "default": "Shop"
     },
     {
+      "type": "text",
+      "id": "default_active_menu",
+      "label": "Default active menu name",
+      "info": "Enter a level 1 menu item title exactly, for example: The Guide. Leave blank to show the first item."
+    },
+    {
+      "type": "textarea",
+      "id": "promo_text_by_menu",
+      "label": "Bottom text in menu order",
+      "info": "Enter one message for each level 1 menu item, in the same order. Separate messages with a vertical bar | or put each message on its own line."
+    },
+    {
       "type": "inline_richtext",
       "id": "promo_text",
-      "label": "Bottom text",
+      "label": "Fallback bottom text",
       "default": "Discover what is new."
     },
     {

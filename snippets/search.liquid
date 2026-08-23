@@ -18,6 +18,7 @@
       class="button-unstyled header-actions__action{% if display_style == 'text' %} header-actions__text-style{% endif %}"
       aria-label="{{ 'content.search_input_label' | t }}"
       aria-haspopup="dialog"
+      data-editorial-action-label="Search"
     >
       <span class="{% if display_style == 'icon' %}hidden{% else %}mobile:hidden{% endif %}">
         {{ 'content.search' | t }}
